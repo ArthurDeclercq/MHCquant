@@ -51,7 +51,7 @@ if (params.run_centroidisation) {
 
       Channel.empty()
         .into{input_mzmls_unpicked; input_mzmls_align_unpicked}
-}  
+}
 
 
 //Raw branch
@@ -394,7 +394,7 @@ process get_software_versions {
 
 /*
  * STEP 0 - Output Description HTML
-*/ 
+*/
 process output_documentation {
     publishDir "${params.outdir}/pipeline_info", mode: 'copy'
 
@@ -445,10 +445,10 @@ process generate_decoy_database {
 
     output:
      set val("$id"), val("$Sample"), file("${fastafile.baseName}_decoy.fasta") into (fastafile_decoy_1, fastafile_decoy_2)
-    
+
     when:
      !params.skip_decoy_generation
- 
+
     script:
      """
      DecoyDatabase  -in ${fastafile} \\
@@ -469,7 +469,7 @@ process raw_file_conversion {
 
     output:
      set val("$id"), val("$Sample"), val("$Condition"), file("${rawfile.baseName}.mzML") into (raws_converted, raws_converted_align)
-   
+
     script:
      """
      ThermoRawFileParser.sh -i=${rawfile} -f=2 -b=${rawfile.baseName}.mzML
@@ -507,9 +507,9 @@ process db_search_comet {
     tag "${Sample}"
 
     label 'process_medium_long'
- 
+
     input:
-     set val(Sample), val(id), val(Condition), file(mzml_file), val(d), file(fasta_decoy) from raws_converted.mix(input_mzmls.mix(input_mzmls_picked)).join(fastafile_decoy_1.mix(input_fasta_1), by:1, remainder:true) 
+     set val(Sample), val(id), val(Condition), file(mzml_file), val(d), file(fasta_decoy) from raws_converted.mix(input_mzmls.mix(input_mzmls_picked)).join(fastafile_decoy_1.mix(input_fasta_1), by:1, remainder:true)
 
     output:
      set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_${Condition}_${id}.idXML") into id_files
@@ -548,7 +548,7 @@ process db_search_comet {
  * STEP 3 - index decoy and target hits
  */
 process index_peptides {
- 
+
     input:
      set val(Sample), val(id), val(Condition), file(id_file), val(d), file(fasta_decoy) from id_files.join(fastafile_decoy_2.mix(input_fasta_2), by:1)
 
@@ -572,7 +572,7 @@ process index_peptides {
  * STEP 4 - calculate fdr for id based alignment
  */
 process calculate_fdr_for_idalignment {
- 
+
     input:
      set val(id), val(Sample), val(Condition), file(id_file_idx) from id_files_idx
 
@@ -597,7 +597,7 @@ process calculate_fdr_for_idalignment {
  * STEP 5 - filter fdr for id based alignment
  */
 process filter_fdr_for_idalignment {
- 
+
     input:
      set val(id), val(Sample), val(Condition), file(id_file_idx_fdr) from id_files_idx_fdr
 
@@ -752,7 +752,7 @@ process merge_aligned_idxml_files {
  */
 process extract_psm_features_for_percolator {
     publishDir "${params.outdir}/Intermediate_Results/"
- 
+
     input:
      set val(id), val(Sample), val(Condition), file(id_file_merged) from id_merged
 
@@ -763,7 +763,7 @@ process extract_psm_features_for_percolator {
      """
      PSMFeatureExtractor -in ${id_file_merged} \\
                          -out ${Sample}_all_ids_merged_psm.idXML \\
-                         -threads ${task.cpus} 
+                         -threads ${task.cpus}
      """
 
 }
@@ -776,13 +776,13 @@ process run_percolator {
     publishDir "${params.outdir}/Intermediate_Results/"
 
     label 'process_medium'
- 
+
     input:
      set val(id), val(Sample), val(Condition), file(id_file_psm) from id_files_merged_psm
 
     output:
      set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_all_ids_merged_psm_perc.idXML") into (id_files_merged_psm_perc, id_files_merged_psm_perc_sub)
-
+     set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_pecolator_feature.pin") into ms2rescore
     if (params.klammer && params.description_correct_features == 0) {
         log.warn('Klammer was specified, but description of correct features was still 0. Please provide a description of correct features greater than 0.')
         log.warn('Klammer has been turned off!')
@@ -795,6 +795,7 @@ process run_percolator {
     OMP_NUM_THREADS=${task.cpus} \\
     PercolatorAdapter -in ${id_file_psm} \\
                        -out ${Sample}_all_ids_merged_psm_perc.idXML \\
+                       -out_pin ${Sample}_pecolator_feature.pin \\
                        -seed 4711 \\
                        -trainFDR 0.05 \\
                        -testFDR 0.05 \\
@@ -809,6 +810,7 @@ process run_percolator {
     OMP_NUM_THREADS=${task.cpus} \\
     PercolatorAdapter -in ${id_file_psm} \\
                        -out ${Sample}_all_ids_merged_psm_perc.idXML \\
+                       -out_pin ${Sample}_pecolator_feature.pin \\
                        -seed 4711 \\
                        -trainFDR 0.05 \\
                        -testFDR 0.05 \\
@@ -819,7 +821,7 @@ process run_percolator {
                        -doc ${params.description_correct_features} \\
     """
     }
-     
+
 
 }
 
@@ -829,7 +831,7 @@ process run_percolator {
  */
 process filter_by_q_value {
     publishDir "${params.outdir}/Intermediate_Results/"
- 
+
     input:
      set val(id), val(Sample), val(Condition), file(id_file_perc) from id_files_merged_psm_perc
 
@@ -858,16 +860,16 @@ process filter_by_q_value {
  */
 process filter_by_q_value_first {
     publishDir "${params.outdir}/Intermediate_Results/"
-    
+
     input:
     set val(id), val(Sample), val(Condition), file(id_file_perc_sub) from id_files_merged_psm_perc_sub
-    
+
     output:
     set val("$id"), val("$Sample"), file("${Sample}_all_ids_merged_psm_perc_filtered.idXML") into id_files_merged_psm_perc_filtered_refine
 
     when:
      params.refine_fdr_on_predicted_subset
-    
+
     script:
      """
      IDFilter -in ${id_file_perc_sub} \\
@@ -960,7 +962,7 @@ process predict_psms {
  */
 process filter_psms_by_predictions {
     publishDir "${params.outdir}/Intermediate_Results/"
-    
+
     input:
      set val(id), val(Sample), val(Condition), file(id_file_psm_filtered) from id_files_merged_psm_refine_2
      set val(id), val(Sample), file(peptide_filter_file) from peptide_filter
@@ -969,7 +971,7 @@ process filter_psms_by_predictions {
      set val("$id"), val("$Sample"), file("${Sample}_pred_filtered.idXML") into id_files_merged_psm_pred_filtered
 
     when:
-     params.refine_fdr_on_predicted_subset    
+     params.refine_fdr_on_predicted_subset
 
     script:
      """
@@ -1020,18 +1022,18 @@ process run_percolator_on_predicted_subset {
  */
 process filter_refined_q_value {
     publishDir "${params.outdir}/Intermediate_Results/"
-     
+
     input:
      set val(id), val(Sample), file(id_file_perc_pred) from id_files_merged_psm_pred_perc
-     
+
     output:
      set val("$id"), val("$Sample"), file("${Sample}_perc_subset_filtered.idXML") into (id_files_merged_psm_pred_perc_filtered, ids_for_rt_training_subset, ids_for_rt_prediction_subset)
 
     when:
-     params.refine_fdr_on_predicted_subset     
+     params.refine_fdr_on_predicted_subset
 
     script:
-     """      
+     """
      IDFilter -in ${id_file_perc_pred} \\
               -out ${Sample}_perc_subset_filtered.idXML \\
               -threads ${task.cpus} \\
@@ -1054,7 +1056,7 @@ id_files_for_quant_fdr
  */
 process quantify_identifications_targeted {
     publishDir "${params.outdir}/Intermediate_Results/"
- 
+
     input:
      set val(Sample), val(id), val(Condition), file(id_file_quant_int), file(mzml_quant), val(all_ids), file(id_file_quant) from joined_mzmls_ids_quant
 
@@ -1081,7 +1083,7 @@ process quantify_identifications_targeted {
                                  -svm:min_prob ${params.quantification_min_prob} \\
                                  -out ${Sample}_${id}.featureXML \\
                                  -threads ${task.cpus}
-     """   
+     """
     }
 }
 
@@ -1097,7 +1099,7 @@ process link_extracted_features {
 
     output:
      set val("$Sample"), file("${Sample}_all_features_merged.consensusXML") into consensus_file
-    
+
     when:
      !params.skip_quantification
 
@@ -1115,7 +1117,7 @@ process link_extracted_features {
  * STEP 15 - resolve conflicting ids matching to the same feature
  */
 process resolve_conflicts {
- 
+
     input:
      set val(Sample), file(consensus) from consensus_file
 
@@ -1140,7 +1142,7 @@ process resolve_conflicts {
  */
 process export_text {
     publishDir "${params.outdir}/"
- 
+
     input:
      set val(Sample), file(consensus_resolved) from consensus_file_resolved
 
@@ -1206,9 +1208,9 @@ process predict_peptides_mhcflurry_class_1 {
 
 /*
  * STEP 19 - Preprocess found peptides for MHCNuggets prediction class 2
- */ 
+ */
  process preprocess_peptides_mhcnuggets_class_2 {
-     
+
     input:
      set val(id), val(Sample), file(mztab_file) from mhcnuggets_mztab
 
@@ -1228,7 +1230,7 @@ process predict_peptides_mhcflurry_class_1 {
 
  /*
  * STEP 20 - Predict found peptides using MHCNuggets class 2
-*/  
+*/
  process predict_peptides_mhcnuggets_class_2 {
 
     input:
@@ -1249,7 +1251,7 @@ process predict_peptides_mhcflurry_class_1 {
 
  /*
  * STEP 21 - Postprocess predicted MHCNuggets peptides class 2
- */ 
+ */
  process postprocess_peptides_mhcnuggets_class_2 {
     publishDir "${params.outdir}/class_2_bindings"
 
@@ -1267,7 +1269,7 @@ process predict_peptides_mhcflurry_class_1 {
     postprocess_peptides_mhcnuggets.py --input ${predicted_peptides} --peptides_seq_ID ${peptide_to_geneID} --output ${Sample}_postprocessed.csv
     """
  }
- 
+
 
 /*
  * STEP 22 - Predict all possible neoepitopes from vcf
@@ -1283,7 +1285,7 @@ process predict_possible_neoepitopes {
     output:
      set val("id"), val("$Sample"), file("${Sample}_vcf_neoepitopes.csv") into possible_neoepitopes
      set val("id"), val("$Sample"), file("${Sample}_vcf_neoepitopes.txt") into possible_neoepitopes_list
- 
+
     when:
      params.include_proteins_from_vcf & params.predict_class_1
 
@@ -1327,11 +1329,11 @@ process Resolve_found_neoepitopes {
     echo true
 
     input:
-     set val(id), val(Sample), file(mztab), file(neoepitopes) from features_mztab_neoepitopes.join(possible_neoepitopes, by:[0,1], remainder:true) 
+     set val(id), val(Sample), file(mztab), file(neoepitopes) from features_mztab_neoepitopes.join(possible_neoepitopes, by:[0,1], remainder:true)
 
     output:
      set val("$id"), val("$Sample"), file("${Sample}_found_neoepitopes_class_1.csv") into found_neoepitopes
-    
+
     when:
      params.include_proteins_from_vcf & params.predict_class_1
 
@@ -1376,7 +1378,7 @@ process Predict_neoepitopes_mhcflurry_class_1 {
 
     output:
      set val("$id"), val("$Sample"), file("*_${Sample}_predicted_neoepitopes_class_1.csv") into predicted_neoepitopes
-    
+
     when:
      params.include_proteins_from_vcf & params.predict_class_1
 
@@ -1432,7 +1434,7 @@ process predict_neoepitopes_mhcnuggets_class_2 {
 
 /*
  * STEP 27 - Class 2 MHCNuggets Postprocessing
-*/ 
+*/
 process postprocess_neoepitopes_mhcnuggets_class_2 {
     publishDir "${params.outdir}/class_2_bindings"
 
