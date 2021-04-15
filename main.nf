@@ -782,7 +782,8 @@ process run_percolator {
 
     output:
      set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_all_ids_merged_psm_perc.idXML") into (id_files_merged_psm_perc, id_files_merged_psm_perc_sub)
-     set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_pecolator_feature.pin") into ms2rescore
+     set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_pecolator_feature.tsv") into ms2rescore
+
     if (params.klammer && params.description_correct_features == 0) {
         log.warn('Klammer was specified, but description of correct features was still 0. Please provide a description of correct features greater than 0.')
         log.warn('Klammer has been turned off!')
@@ -795,7 +796,7 @@ process run_percolator {
     OMP_NUM_THREADS=${task.cpus} \\
     PercolatorAdapter -in ${id_file_psm} \\
                        -out ${Sample}_all_ids_merged_psm_perc.idXML \\
-                       -out_pin ${Sample}_pecolator_feature.pin \\
+                       -out_pin ${Sample}_pecolator_feature.tsv \\
                        -seed 4711 \\
                        -trainFDR 0.05 \\
                        -testFDR 0.05 \\
@@ -810,7 +811,7 @@ process run_percolator {
     OMP_NUM_THREADS=${task.cpus} \\
     PercolatorAdapter -in ${id_file_psm} \\
                        -out ${Sample}_all_ids_merged_psm_perc.idXML \\
-                       -out_pin ${Sample}_pecolator_feature.pin \\
+                       -out_pin ${Sample}_pecolator_feature.tsv \\
                        -seed 4711 \\
                        -trainFDR 0.05 \\
                        -testFDR 0.05 \\
