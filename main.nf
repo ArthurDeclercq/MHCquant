@@ -464,6 +464,8 @@ process generate_decoy_database {
  */
 process raw_file_conversion {
 
+    stageInMode "copy"
+
     input:
      set val(id), val(Sample), val(Condition), file(rawfile) from input_raws
 
@@ -740,7 +742,7 @@ process merge_aligned_idxml_files {
      IDMerger -in $ids_aligned \\
               -out ${Sample}_all_ids_merged.idXML \\
               -threads ${task.cpus}  \\
-              -annotate_file_origin  \\
+              -annotate_file_origin \\
               -merge_proteins_add_PSMs
      """
 
@@ -782,7 +784,7 @@ process run_percolator {
 
     output:
      set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_all_ids_merged_psm_perc.idXML") into (id_files_merged_psm_perc, id_files_merged_psm_perc_sub)
-     set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_pecolator_feature.tsv") into ms2rescore
+     set val("$id"), val("$Sample"), val("$Condition"), file("${Sample}_percolator_feature.tsv") into ms2rescore
 
     if (params.klammer && params.description_correct_features == 0) {
         log.warn('Klammer was specified, but description of correct features was still 0. Please provide a description of correct features greater than 0.')
@@ -796,7 +798,7 @@ process run_percolator {
     OMP_NUM_THREADS=${task.cpus} \\
     PercolatorAdapter -in ${id_file_psm} \\
                        -out ${Sample}_all_ids_merged_psm_perc.idXML \\
-                       -out_pin ${Sample}_pecolator_feature.tsv \\
+                       -out_pin ${Sample}_percolator_feature.tsv \\
                        -seed 4711 \\
                        -trainFDR 0.05 \\
                        -testFDR 0.05 \\
@@ -811,7 +813,7 @@ process run_percolator {
     OMP_NUM_THREADS=${task.cpus} \\
     PercolatorAdapter -in ${id_file_psm} \\
                        -out ${Sample}_all_ids_merged_psm_perc.idXML \\
-                       -out_pin ${Sample}_pecolator_feature.tsv \\
+                       -out_pin ${Sample}_percolator_feature.tsv \\
                        -seed 4711 \\
                        -trainFDR 0.05 \\
                        -testFDR 0.05 \\
